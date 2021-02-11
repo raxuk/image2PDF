@@ -4,6 +4,8 @@ import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 
+import javax.swing.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -12,16 +14,40 @@ import java.util.ArrayList;
 
 public class Main {
     public static void main(String[] args) throws IOException {
-        ArrayList<String> images = getFiles();
-        try (PDDocument doc = new PDDocument()) {
-            for (String input : images) {
-                Files.find(Paths.get(input),
-                        Integer.MAX_VALUE,
-                        (path, basicFileAttributes) -> Files.isRegularFile(path))
-                        .forEachOrdered(path -> addImageAsNewPage(doc, path.toString()));
-            }
-            doc.save("PDF.pdf");
+        try {
+            UIManager.setLookAndFeel("com.sun.java.swing.plaf.windows.WindowsLookAndFeel");
+        } catch (Exception e) {
+            e.printStackTrace();
         }
+
+        ArrayList<String> images = getFiles();
+        if (images.size() > 0) {
+            try (PDDocument doc = new PDDocument()) {
+                for (String input : images) {
+                    Files.find(Paths.get(input),
+                            Integer.MAX_VALUE,
+                            (path, basicFileAttributes) -> Files.isRegularFile(path))
+                            .forEachOrdered(path -> addImageAsNewPage(doc, path.toString()));
+                }
+                // parent component of the dialog
+                JFrame parentFrame = new JFrame();
+
+                JFileChooser fileChooser = new JFileChooser();
+                fileChooser.setDialogTitle("Guardar");
+                fileChooser.setCurrentDirectory(new File("."));
+                FileNameExtensionFilter filter = new FileNameExtensionFilter("PDF FILES", "pdf");
+                fileChooser.setFileFilter(filter);
+                int userSelection = fileChooser.showSaveDialog(parentFrame);
+
+                if (userSelection == JFileChooser.APPROVE_OPTION) {
+                    File fileToSave = fileChooser.getSelectedFile();
+
+                    doc.save(fileToSave.getAbsolutePath() + ".pdf");
+                    doc.close();
+                }
+            }
+        }
+        System.exit(0);
     }
 
 
@@ -63,18 +89,36 @@ public class Main {
     }
 
 
+//    private static ArrayList<String> getFiles() {
+//        File curDir = new File(".");
+//        File[] filesList = curDir.listFiles();
+//        ArrayList<String> images = new ArrayList<String>();
+//        for (File f : filesList) {
+//            if (f.isFile()) {
+//                String[] nameFile = f.getName().toUpperCase().split("\\.");
+//                String extFile = "None";
+//                if (nameFile.length > 1)
+//                     extFile = nameFile[nameFile.length-1];
+//                if (extFile.equals("PNG") || extFile.equals("JPG") || extFile.equals("JPEG")) {
+//                    images.add(f.getName());
+//                }
+//            }
+//        }
+//        return images;
+//    }
+
     private static ArrayList<String> getFiles() {
-        File curDir = new File(".");
-        File[] filesList = curDir.listFiles();
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Selección múltiple");
+        chooser.setCurrentDirectory(new File("."));
+        chooser.setMultiSelectionEnabled(true);
+        FileNameExtensionFilter filter = new FileNameExtensionFilter("Images FILES", "jpeg", "jpg", "png");
+        chooser.setFileFilter(filter);
+        chooser.showOpenDialog(null);
+        File[] files = chooser.getSelectedFiles();
         ArrayList<String> images = new ArrayList<String>();
-        for (File f : filesList) {
-            if (f.isFile()) {
-                String nameFile = f.getName().toUpperCase();
-                String extFile = nameFile.split("\\.")[1];
-                if (extFile.equals("PNG") || extFile.equals("JPG") || extFile.equals("JPEG")) {
-                    images.add(f.getName());
-                }
-            }
+        for (File f : files) {
+            images.add(f.getPath());
         }
         return images;
     }
